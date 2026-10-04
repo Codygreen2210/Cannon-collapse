@@ -1,3 +1,29 @@
+Phase 1 sounds (Oct 4, 2026): 13 effects joined with gaps into one file and run through tools/listen.py.
+Effects: launch, reload, wood, woodcrack, stone, clink, glass, ice, tnt, rumble, star, clear, near.
+Key, tempo, chord, melody and "silence gap" findings are left out: these are effects with gaps on purpose.
+
+BEFORE (first pass: peak 0.99, glass and ice partials up to 9 kHz):
+loudness -12.4 LUFS integrated, true peak -0.1 dBTP, loudness range 4.5 LU, crest 15.8 dB
+stereo: side -120.0 dB below mid, correlation 1.00
+energy: sub 15%, bass 52%, low-mid 30%, high-mid 3%, air 0%  (bass-forward; dark: almost nothing above 6 kHz)
+  - true peak -0.1 dBTP, over -1: may distort after MP3/AAC encoding
+
+AFTER (peak 0.6, bright partials capped at 5.2 kHz; this is what is in the game):
+loudness -17.2 LUFS integrated, true peak -4.4 dBTP, loudness range 5.1 LU, crest 16.0 dB
+stereo: side -120.0 dB below mid, correlation 1.00
+energy: sub 14%, bass 49%, low-mid 35%, high-mid 3%, air 0%  (bass-forward; dark: almost nothing above 6 kHz)
+  (nothing flagged: no clipping, true peak under -1 dBTP)
+
+Each effect by itself after the fix (share of energy; the joined file hides a bright effect behind the low ones):
+  clink  2 to 6 kHz 24% (first pass 98%: its partials were moved down from 2250/3350/4500 Hz to 1650/2480/3700 Hz)
+  glass  2 to 6 kHz 79% (it is breaking glass; held to a 0.48 peak and half a second)
+  ice    2 to 6 kHz 14%     woodcrack 14%     star 6%     all others under 5%
+  launch, stone, tnt and rumble were 94 to 99% below 250 Hz, which a phone speaker cannot play; each got a 250 to 1100 Hz layer
+  (now 3 to 12% above 250 Hz). Not heard on a real phone yet.
+After mp3 encoding (80 kbit/s mono) the highest true peak of any file is -4.7 dBTP. All 13 files: 72 KB.
+Pictures and full text: notes/listen/.
+
+---- earlier report (first 7 effects, before phase 1) ----
 BEFORE (first pass, peak 0.99):
 all-effects.wav: 0:06.5 long
 tempo 117.4 BPM (confidence 0.42); key G minor (fit 0.75, runner-up Bb major)

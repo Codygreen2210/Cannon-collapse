@@ -1,0 +1,33 @@
+all-effects-before.wav: 0:11.2 long
+tempo 112.7 BPM (confidence 0.42); key Bb major (fit 0.50, runner-up C major)
+loudness -12.4 LUFS integrated, true peak -0.1 dBTP, loudness range 4.5 LU, crest 15.8 dB
+stereo: side -120.0 dB below mid, correlation 1.00
+energy: sub 15%, bass 52%, low-mid 30%, high-mid 3%, air 0%  (bass-forward; dark: almost nothing above 6 kHz)
+
+chords by bar (4 beats):
+  | N        | N        | N        | N        | G N      
+
+melody (top line): 18 notes, range G3–Bb6 (39 semitones), 8 leaps of a 4th or more, most used: D, Bb, Ab
+  contour: ^-v-^vvv-^v-^^vvv
+  notes: G3 D4 D4 Bb3 Bb3 Bb6 D6 A3 Ab3 Ab3 C6 B4 B4 D5 G5 E4 D4 Bb3
+
+sections:
+  A   0:00.1–0:00.2     nan LUFS  brightness     0 Hz   0.0 hits/s  chords: 
+  B   0:00.2–0:05.5   -14.0 LUFS  brightness   643 Hz   1.7 hits/s  chords: 
+  C   0:05.5–0:09.8   -12.1 LUFS  brightness   503 Hz   1.2 hits/s  chords: G
+  D   0:09.8–0:11.2     nan LUFS  brightness   325 Hz   1.5 hits/s  chords: 
+
+listen out for:
+  - true peak -0.1 dBTP, over -1: may distort after MP3/AAC encoding
+  - silence gap 0:00.8–0:01.2
+  - silence gap 0:01.3–0:01.7
+  - silence gap 0:01.8–0:02.2
+  - silence gap 0:02.4–0:02.9
+  - silence gap 0:03.2–0:03.5
+  - silence gap 0:03.7–0:04.1
+  - silence gap 0:04.6–0:04.9
+  - silence gap 0:05.1–0:05.6
+  - silence gap 0:06.3–0:06.6
+  - silence gap 0:07.5–0:07.9
+  - silence gap 0:08.4–0:08.7
+  - silence gap 0:09.4–0:09.9
