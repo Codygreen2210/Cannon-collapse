@@ -14,3 +14,8 @@ Cody plays the 40 levels and says what is too hard, too easy or dull. Then step 
 ## Vercel (Oct 4)
 - The live site now deploys from this repo's `main` (deployment made by hand through the Vercel connector). Root directory is the repo root.
 - STILL TO DO BY CODY: the Vercel project's Git link still points at Codygreen2210/Claudes-choice, so pushes here do not deploy by themselves yet. In Vercel: project `cannon-collapse` > Settings > Git > disconnect, then connect Codygreen2210/cannon-collapse. Until then a guard (Ignored Build Step) skips any build that does not come from this repo, so a merge in Claudes-choice cannot overwrite the live game. After relinking, that guard can be cleared.
+
+## Oct 4, 4:23pm: Cody's handoff (docs/handoff/)
+- Cody sent a gameplay handoff and an "asset pack". The pack is ONE reference sheet (docs/handoff/art-direction-sheet.jpg), not sliced sprites: use it as art direction and draw the pieces in canvas code. Direction: "blueprint / construction site meets polished cartoon physics"; the fantasy is "figure out the one shot that makes everything collapse".
+- His phase order (GAMEPLAY_HANDOFF.txt section 22): 1 polish the core (recoil, trail, impact effects, material destruction, camera shake, audio) / 2 puzzle depth (weak point, chain reactions, bank shots, challenges) / 3 progression (three-star scoring by efficiency, destruction, style; worlds; boss levels; cannon skins) / 4 art overhaul and HUD cleanup. This replaces the earlier 7-step plan above where they differ.
+- Phase 1 in progress on branch `phase1-polish`. Looks and sound only: no change to weights, friction, ball speed, gravity or breakage rules.

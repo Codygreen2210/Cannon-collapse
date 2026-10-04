@@ -1,0 +1,622 @@
+CANNON COLLAPSE — CLAUDE HANDOFF PACKAGE
+============================================
+
+PROJECT
+-------
+Game: Cannon Collapse
+Current concept: A mobile/browser physics puzzle game where the player uses a cannon to knock down structures and create chain reactions.
+
+CURRENT DIRECTION
+-----------------
+The game should evolve from "shoot the blocks" into:
+
+    "Figure out the one shot that makes everything collapse."
+
+Core pillars:
+1. Satisfying destruction
+2. Chain reactions
+3. Material-specific physics
+4. Skillful/perfect shots
+
+IMPORTANT:
+Do not turn this into a generic cartoon mobile game. Keep the game readable, clean, premium, and physics-focused.
+
+
+1. CORE GAMEPLAY EXPERIENCE
+---------------------------
+
+Player sees:
+CANNON → STRUCTURE → TARGET/WEAK POINT
+
+Player aims and fires a limited number of shots.
+
+The goal is not simply to hit blocks. The goal is to discover the shot that creates the biggest/most efficient collapse.
+
+Make the physics feel satisfying:
+- Cannon recoils when fired.
+- Cannonball has a subtle trail.
+- Cannon produces smoke after firing.
+- Heavy impacts create subtle screen shake.
+- Perfect/critical impacts can briefly slow down time.
+- Blocks react naturally to force and weight.
+- Collapses should feel physical rather than scripted whenever possible.
+
+
+2. DESTRUCTION FEEDBACK
+-----------------------
+
+WOOD / TIMBER
+- Strong initial impact
+- Cracks
+- Splinters
+- Deep "THUNK → CRACK → SPLINTER" audio character
+
+GLASS
+- Fragile
+- Cracks before breaking
+- Breaks into multiple visible fragments
+- "CLINK → SHATTER" audio character
+
+ICE
+- Cracks
+- Slides more easily than timber
+- Can fracture into pieces
+- "CRACK → CRASH" audio character
+
+METAL
+- Very heavy
+- Difficult to destroy
+- Moves significantly when hit
+- "CLANG → BANG" audio character
+
+Future materials:
+- Stone: extremely heavy
+- Explosive: detonates when struck
+- Magnetic: attracts/repels other blocks
+- Rope: can be cut/broken through interactions
+
+
+3. LEVEL DESIGN
+---------------
+
+Avoid making levels simply "knock everything down."
+
+Create puzzle types:
+
+WEAK POINT
+A large structure is held together by a small support.
+Player must hit the support.
+
+CHAIN REACTION
+Player has only 1–2 shots.
+One impact must trigger multiple secondary impacts.
+
+BANK SHOT
+Target is behind an obstacle.
+Player must bounce the cannonball off a wall.
+
+DOMINO
+Blocks are arranged so one impact can knock down a sequence.
+
+BALANCE
+Weight is distributed unevenly.
+Player must change the balance of a platform/structure.
+
+MOVING TARGET
+Targets or platforms move.
+
+MULTI-STAGE COLLAPSE
+Player must first alter the structure, then exploit the new physics state.
+
+
+4. MATERIAL CATEGORIES
+----------------------
+
+Existing top categories:
+- Timber
+- Glass
+- Ice
+- Balance
+
+Suggested direction:
+Make these categories/worlds rather than just UI labels.
+
+Timber = structural destruction
+Glass = fragile chain reactions
+Ice = sliding/friction puzzles
+Balance = weight/physics puzzles
+
+Future worlds:
+- Stone
+- Metal
+- Explosive
+- Magnetic
+- Rope
+
+
+5. SCORING
+----------
+
+Move toward a 3-star system.
+
+STAR 1 — EFFICIENCY
+How few shots were used?
+
+STAR 2 — DESTRUCTION
+How much of the structure was destroyed?
+
+STAR 3 — STYLE
+Did the player perform special actions such as:
+- Bank shot
+- Chain reaction
+- Critical hit
+- One-shot clear
+- Perfect collapse
+
+End-of-level example:
+
+        PERFECT COLLAPSE
+
+             ★ ★ ★
+
+          1 SHOT
+        14 BLOCKS
+       3,840 DAMAGE
+
+
+6. CHAIN REACTION SYSTEM
+------------------------
+
+This should become one of the game's signature mechanics.
+
+Example:
+
+HIT
+ ↓
+WOOD FALLS
+ ↓
+CHAIN x2
+ ↓
+GLASS BREAKS
+ ↓
+CHAIN x4
+ ↓
+ICE SLIDES
+ ↓
+CHAIN x7
+ ↓
+TOTAL COLLAPSE
+
+Show increasingly exciting feedback as the chain grows.
+
+Potential labels:
+- HIT
+- CRITICAL HIT
+- CHAIN x2
+- CHAIN x4
+- CHAIN x7
+- MASSIVE COLLAPSE
+- TOTAL COLLAPSE
+- ONE SHOT
+- PERFECT
+
+
+7. AIMING / CANNON
+------------------
+
+Add a subtle trajectory prediction line.
+
+Do NOT make it visually obnoxious.
+
+Possible:
+• • • • • • • •
+or a thin projected arc.
+
+Show power/angle only if useful.
+
+Potential:
+POWER
+████████░░
+
+ANGLE
+34°
+
+Advanced players could eventually have an option to disable the trajectory guide.
+
+
+8. CANNON PERSONALITY
+---------------------
+
+The cannon should feel like the player's "character."
+
+Possible upgrades/skins:
+- Basic Cannon
+- Heavy Cannon
+- Triple Shot Cannon
+- Explosive Cannon
+- Bouncy Cannon
+- Freeze Cannon
+- Lightning Cannon
+
+Do not make upgrades mandatory for normal progression unless the game design later proves this necessary.
+
+The cannon should:
+- Recoil
+- Smoke
+- Have satisfying firing audio
+- Have visible muzzle flash
+- React to powerful shots
+
+
+9. UI DIRECTION
+---------------
+
+Current UI has:
+- Level number
+- Stars
+- Previous/next buttons
+- Timber/Glass/Ice/Balance tabs
+- Score
+- Sound
+- Restart
+- Shots remaining
+
+Problem:
+There is a lot of information above the gameplay area.
+
+Explore reducing the gameplay HUD to something like:
+
+             LEVEL 6
+             ★ ★ ☆
+
+    -------------------------
+          GAME WORLD
+    -------------------------
+
+            ● ●
+          2 SHOTS
+
+       ↻     🔊     ⚙
+
+Move world/category navigation into level selection/world-map screens where possible.
+
+The physics playfield should get as much vertical space as possible, especially on mobile.
+
+
+10. VISUAL IDENTITY
+-------------------
+
+Current dark-blue background is a good foundation.
+
+Recommended visual direction:
+"Blueprint / construction site meets polished cartoon physics."
+
+Environment:
+- Dark navy sky/background
+- Subtle mountains
+- Construction silhouettes
+- Platforms
+- Scaffolding
+- Ropes
+- Cranes
+- Warning signs
+- Bolts
+- Subtle clouds
+- Light environmental particles
+
+Foreground must remain extremely readable.
+
+The player's eye should immediately understand:
+CANNON → TARGET → STRUCTURE
+
+
+11. CHALLENGE SHOTS
+-------------------
+
+After completing a level, offer optional challenges.
+
+Examples:
+- BANK SHOT
+- ONE SHOT
+- NO DIRECT HITS
+- UNDER 3 SECONDS
+- DESTROY EVERYTHING
+
+This creates replayability without requiring completely different levels.
+
+
+12. BOSS / MILESTONE LEVELS
+---------------------------
+
+Every 10 levels can have a special large structure.
+
+Examples:
+
+LEVEL 10 — THE FORT
+Destroy a heavily supported tower.
+
+LEVEL 20 — THE BRIDGE
+Destroy supports without letting the main target fall into water.
+
+LEVEL 30 — THE CLOCKTOWER
+Introduce moving targets.
+
+LEVEL 40 — THE FACTORY
+Conveyors + metal + explosive interactions.
+
+LEVEL 50 — THE CASTLE
+Large multi-stage collapse.
+
+
+13. AUDIO DIRECTION
+-------------------
+
+Audio is important.
+
+Each material should have its own sound identity.
+
+Wood:
+THUNK / CRACK / SPLINTER
+
+Glass:
+CLINK / CRACK / SHATTER
+
+Ice:
+CRACK / SLIDE / CRASH
+
+Metal:
+CLANG / DING / BANG
+
+Also add:
+- Cannon firing
+- Cannon reload
+- Cannon recoil
+- Impact
+- Chain reaction escalation
+- Collapse rumble
+- Star award
+- Perfect shot
+- Level completion
+
+Keep audio short and satisfying rather than overly cinematic.
+
+
+14. CAMERA / EFFECTS
+--------------------
+
+Use effects sparingly.
+
+Recommended:
+- Tiny camera shake on heavy impacts
+- Slight slow motion on critical hits
+- Small particle bursts
+- Dust/smoke when heavy objects land
+- Glass shards
+- Wood splinters
+- Subtle screen flash for huge collapses
+
+Avoid excessive screen effects that make physics hard to read.
+
+
+15. MOBILE-FIRST DESIGN
+-----------------------
+
+The game is currently being played on a phone.
+
+Prioritize:
+- Large touch targets
+- Minimal HUD clutter
+- One-handed usability where possible
+- Responsive playfield
+- No important buttons hidden behind browser/UI safe areas
+- Keep cannon and target visible
+- Prevent accidental taps on navigation controls
+- Make aiming work naturally with touch drag
+
+
+16. ENGINEERING / IMPLEMENTATION DIRECTION
+------------------------------------------
+
+Preserve the current game's physics and functionality unless replacing something materially improves the experience.
+
+Before making large changes:
+1. Inspect the existing project.
+2. Identify the rendering/gameplay engine.
+3. Identify how blocks/materials are represented.
+4. Identify how levels are defined.
+5. Identify current asset paths.
+6. Identify mobile input handling.
+7. Make incremental changes.
+8. Test after each major gameplay change.
+
+Do not rewrite the entire project simply to implement visual changes.
+
+Separate:
+- Gameplay/physics logic
+- Level data
+- UI
+- Audio
+- Visual assets
+- Effects
+
+Make materials data-driven so new materials can be added without rewriting the physics system.
+
+
+17. ASSET SYSTEM
+----------------
+
+Recommended project organization:
+
+public/
+  assets/
+    cannon/
+    blocks/
+      timber/
+      glass/
+      ice/
+      metal/
+    environments/
+    effects/
+    ui/
+    audio/
+
+Example:
+public/assets/cannon/cannon-basic.png
+public/assets/blocks/timber/timber-block.png
+public/assets/blocks/glass/glass-block.png
+public/assets/blocks/ice/ice-block.png
+
+If the project uses a different framework/assets structure, adapt to the existing project rather than blindly following this structure.
+
+Prefer transparent PNG/WebP assets for sprites.
+
+For repeated blocks, use scalable/vector assets or procedural shapes where that produces better physics/performance.
+
+
+18. GRAPHICS / ART DIRECTION
+----------------------------
+
+Create a cohesive asset family rather than random images from different styles.
+
+Asset style:
+- Clean 2D game illustration
+- Slightly stylized
+- Strong silhouettes
+- Readable at small mobile sizes
+- Dark navy environmental palette
+- Warm wood/orange/yellow material accents
+- Minimal unnecessary detail
+- Consistent outlines/shadows
+- Premium casual-physics-game feel
+
+Required starter asset pack:
+1. Basic cannon
+2. Cannonball
+3. Timber block variants
+4. Glass block variants
+5. Ice block variants
+6. Basic platform
+7. Background/mountain layer
+8. Dust impact effect
+9. Wood splinter effect
+10. Glass shard effect
+11. Ice crack effect
+12. Muzzle smoke
+13. Muzzle flash
+14. Star icon
+15. Level-complete badge
+
+
+19. IMPORTANT ASSET NOTE
+------------------------
+
+Do not use random web images as final game assets.
+
+The visual examples shown during design exploration are references only.
+
+For final production assets, either:
+A. Generate original game assets specifically for Cannon Collapse, or
+B. Create the assets in an illustration/vector program.
+
+If using generated assets, keep the style consistent across the entire asset pack.
+
+
+20. LEVEL DATA EXAMPLE
+----------------------
+
+Design levels as data where possible.
+
+Example conceptual structure:
+
+level:
+  id
+  world
+  par
+  shots
+  blocks[]
+  platforms[]
+  specialObjects[]
+  target
+  challenges[]
+
+This allows dozens/hundreds of levels to be created without rewriting game code.
+
+
+21. SUCCESS CRITERIA
+-------------------
+
+The redesign is successful if:
+
+- A new player understands the objective immediately.
+- Firing the cannon feels satisfying.
+- Blocks have clearly different physical behavior.
+- Chain reactions are visually obvious.
+- Players want to retry levels to improve their score.
+- The game looks cohesive rather than AI-generated/random.
+- Gameplay area gets priority over HUD.
+- The experience works cleanly on phones.
+- New materials and level types can be added without major code rewrites.
+
+
+22. PRIORITY ORDER
+------------------
+
+PHASE 1 — POLISH THE CORE
+1. Cannon recoil
+2. Better cannonball trail
+3. Better impact effects
+4. Material-specific destruction
+5. Camera shake
+6. Better audio feedback
+
+PHASE 2 — PUZZLE DEPTH
+7. Weak-point levels
+8. Chain reactions
+9. Bank shots
+10. Balance levels
+11. Challenge objectives
+
+PHASE 3 — PROGRESSION
+12. Three-star scoring
+13. Level/world progression
+14. Milestone/boss levels
+15. Cannon cosmetics/upgrades
+
+PHASE 4 — ART OVERHAUL
+16. Consistent asset pack
+17. Environment layers
+18. Material-specific visual effects
+19. UI refinement
+20. Final mobile polish
+
+
+23. CLAUDE'S FIRST TASK
+----------------------
+
+Before coding:
+
+1. Inspect the current Cannon Collapse project.
+2. Explain the current architecture in a short summary.
+3. Identify what can be improved without rewriting the existing physics.
+4. Implement PHASE 1 first.
+5. Keep the current levels playable.
+6. Do not remove working functionality.
+7. Show the result after each major change.
+8. Prioritize mobile performance and readability.
+
+Do not build every future feature immediately.
+
+The goal is to turn the current prototype into an addictive, polished physics puzzle game one system at a time.
+
+
+FINAL PRODUCT POSITIONING
+-------------------------
+
+CANNON COLLAPSE
+
+"One shot. One chain reaction. Total collapse."
+
+Core fantasy:
+Find the perfect shot, trigger the reaction, and watch the entire structure come down.
+
+END HANDOFF

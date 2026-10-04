@@ -1,0 +1,434 @@
+CANNON COLLAPSE — ART ASSET INTEGRATION HANDOFF FOR CLAUDE
+===============================================================
+
+PURPOSE
+-------
+You have access to the Cannon Collapse repository. Integrate the new Cannon Collapse art assets into the EXISTING game without replacing working gameplay/physics.
+
+The assets are intended to establish a cohesive 2D physics-puzzle visual identity:
+"blueprint/construction site meets polished cartoon physics."
+
+IMPORTANT:
+- Inspect the repo before changing anything.
+- Preserve the existing physics and level logic.
+- Do not rewrite the game architecture just to install assets.
+- Make assets data-driven where practical.
+- Keep the game mobile-first.
+- If an asset does not map cleanly to the current architecture, adapt the integration layer rather than breaking gameplay.
+
+
+PHASE 1 — REPO AUDIT
+--------------------
+
+Before modifying code, identify:
+
+1. Framework/build system.
+2. Rendering/game engine.
+3. Current block/entity component(s).
+4. Cannon component/entity.
+5. Cannonball/projectile implementation.
+6. Level-definition format.
+7. Current static/public asset directory.
+8. Current CSS/UI structure.
+9. Audio implementation.
+10. Mobile input/aiming implementation.
+
+Then make a short implementation plan.
+
+Do NOT replace the existing physics engine unless there is a demonstrated reason.
+
+
+PHASE 2 — ASSET DIRECTORY
+-------------------------
+
+Use the repository's existing conventions if they exist.
+
+If there is no established asset organization, use:
+
+public/
+  assets/
+    cannon-collapse/
+      cannon/
+      blocks/
+        timber/
+        glass/
+        ice/
+        metal/
+      environment/
+      effects/
+      ui/
+
+Suggested files:
+
+cannon/
+  cannon-basic.png
+  cannonball.png
+
+blocks/timber/
+  timber-block-01.png
+  timber-block-02.png
+  timber-block-03.png
+
+blocks/glass/
+  glass-block-01.png
+  glass-block-02.png
+  glass-block-03.png
+
+blocks/ice/
+  ice-block-01.png
+  ice-block-02.png
+  ice-block-03.png
+
+blocks/metal/
+  metal-block-01.png
+  metal-block-02.png
+  metal-block-03.png
+
+environment/
+  background-sky.png
+  background-mountains.png
+  platform.png
+
+effects/
+  muzzle-flash.png
+  cannon-smoke.png
+  dust-impact.png
+  wood-splinters.png
+  glass-shards.png
+  ice-fragments.png
+
+ui/
+  star.png
+  perfect-collapse.png
+  chain-badge.png
+
+
+PHASE 3 — DO NOT DISTORT THE PHYSICS
+-------------------------------------
+
+The visual sprite should follow the existing physics body's position, rotation, and scale.
+
+Do NOT make the sprite itself the collision body.
+
+Recommended architecture:
+
+PHYSICS BODY
+    ↓
+SPRITE / VISUAL
+    ↓
+EFFECTS
+
+The physics engine remains authoritative.
+
+If the existing system already uses canvas drawing rather than DOM images, adapt the new artwork into that rendering system instead of forcing image elements into the physics layer.
+
+
+PHASE 4 — CANNON
+----------------
+
+Replace the current cannon visual with the new cannon asset.
+
+Requirements:
+- Cannon barrel rotates with current aiming angle.
+- Pivot point should be near the rear/base of the cannon.
+- Do not rotate the entire cannon UI/container if that breaks controls.
+- Cannon recoil should be visual only unless recoil already affects gameplay.
+
+Firing sequence:
+
+1. Player fires.
+2. Cannon visibly recoils.
+3. Muzzle flash appears briefly.
+4. Smoke appears.
+5. Cannonball leaves barrel.
+6. Cannon returns smoothly to its original position.
+
+Do not make these effects interfere with aiming.
+
+
+PHASE 5 — CANNONBALL
+--------------------
+
+Use the cannonball asset for the existing projectile.
+
+Requirements:
+- Existing projectile physics remain unchanged.
+- Rotate/animate the sprite if appropriate.
+- Add a subtle trail only if performance remains good on mobile.
+- Do not add excessive particles.
+
+
+PHASE 6 — BLOCKS / MATERIALS
+----------------------------
+
+Map visual assets to the existing material types.
+
+TIMBER:
+- Existing timber physics remain.
+- Use timber sprite variants.
+- Add wood impact/splinter effect when appropriate.
+
+GLASS:
+- Existing glass physics remain.
+- Use glass sprite variants.
+- Add crack/shatter effect when destruction occurs.
+
+ICE:
+- Existing ice physics remain.
+- Use ice sprite variants.
+- Add fracture/fragment effect.
+
+METAL:
+- Existing metal physics remain.
+- Heavy visual appearance.
+- Add impact sparks/metal effect only if an appropriate asset exists.
+
+IMPORTANT:
+Do not alter friction, density, restitution, mass, or collision behavior simply because the visuals changed. If the game already has material physics, preserve them.
+
+
+PHASE 7 — BACKGROUND
+--------------------
+
+Add the new background/environment artwork behind the physics world.
+
+Layer order should conceptually be:
+
+BACKGROUND SKY
+BACKGROUND MOUNTAINS
+ENVIRONMENT DECOR
+PHYSICS STRUCTURES
+CANNON / PROJECTILES
+PARTICLES / IMPACT EFFECTS
+UI
+
+The background must never interfere with collision detection.
+
+Use responsive scaling so it works on:
+- Mobile portrait
+- Mobile landscape if supported
+- Desktop
+
+
+PHASE 8 — EFFECTS
+------------------
+
+Trigger effects from actual gameplay events.
+
+DO NOT simply play effects on a timer.
+
+Examples:
+
+CANNON FIRE
+→ muzzle flash
+→ smoke
+
+HEAVY IMPACT
+→ dust
+→ subtle screen shake
+
+TIMBER BREAK
+→ splinters
+
+GLASS BREAK
+→ glass shards
+
+ICE BREAK
+→ ice fragments
+
+LARGE COLLAPSE
+→ stronger dust/particles
+→ optional brief slow motion
+→ stronger camera shake
+
+Effects should be pooled/reused where possible for performance.
+
+
+PHASE 9 — CHAIN REACTION FEEDBACK
+---------------------------------
+
+Build visual feedback around the existing collision/destruction events.
+
+When one object causes another:
+
+CHAIN x2
+CHAIN x3
+CHAIN x4
+etc.
+
+Use a small floating UI indicator rather than covering the playfield.
+
+At a large threshold:
+
+MASSIVE COLLAPSE
+
+At complete destruction:
+
+TOTAL COLLAPSE
+
+Do not invent a separate scoring system if one already exists. Connect to the current scoring system.
+
+
+PHASE 10 — STAR / RESULT UI
+---------------------------
+
+Use the new star asset for the existing star UI if appropriate.
+
+End-of-level presentation should support:
+
+PERFECT COLLAPSE
+
+★ ★ ★
+
+1 SHOT
+14 BLOCKS
+3,840 DAMAGE
+
+Use the existing game's actual values rather than hard-coded example numbers.
+
+If the game does not yet track these values, add lightweight tracking:
+- shots used
+- blocks destroyed
+- chain maximum
+- optional damage/impact score
+
+
+PHASE 11 — MOBILE UI CLEANUP
+----------------------------
+
+The screenshot shows significant HUD space above the gameplay area.
+
+Preserve functionality but investigate moving world/category navigation out of active gameplay.
+
+During gameplay, prioritize:
+
+LEVEL
+STARS
+GAMEPLAY
+SHOTS
+RESTART / SOUND / SETTINGS
+
+Make touch targets at least comfortably finger-sized.
+
+Respect:
+- Safe areas
+- Browser viewport
+- Android navigation area
+- Notches/cutouts
+- Landscape if supported
+
+Do not let the new artwork reduce the usable playfield.
+
+
+PHASE 12 — PERFORMANCE
+----------------------
+
+Before finalizing:
+
+- Compress large images where practical.
+- Prefer WebP/PNG depending on transparency and current pipeline.
+- Avoid huge full-resolution backgrounds.
+- Reuse textures.
+- Pool particles/effects.
+- Avoid creating unnecessary DOM nodes every frame.
+- Do not run expensive filters on dozens of objects simultaneously.
+- Test with many blocks on a phone-sized viewport.
+
+The game must remain responsive during large collapses.
+
+
+PHASE 13 — FALLBACKS
+--------------------
+
+If an asset fails to load:
+
+1. Game must continue working.
+2. Use existing procedural/default rendering.
+3. Log a useful development warning.
+4. Never let a missing image crash the level.
+
+Example concept:
+
+if asset unavailable:
+    renderExistingBlockFallback()
+
+
+PHASE 14 — VISUAL CONSISTENCY
+-----------------------------
+
+All new assets should appear to belong to the same game.
+
+Keep:
+- Consistent outline treatment
+- Consistent shadow treatment
+- Consistent proportions
+- Consistent lighting direction
+- Consistent level of detail
+- Strong silhouettes
+- Readability at small sizes
+
+Do not mix the new art with random stock icons or unrelated emoji-style graphics.
+
+
+PHASE 15 — TEST CHECKLIST
+-------------------------
+
+Test at minimum:
+
+1. Level loads.
+2. Cannon aims normally.
+3. Cannon fires normally.
+4. Cannonball collision works.
+5. Timber blocks render correctly.
+6. Glass blocks render correctly.
+7. Ice blocks render correctly.
+8. Metal blocks render correctly if supported.
+9. Blocks retain their existing physics.
+10. Blocks rotate correctly with physics.
+11. Destruction effects trigger correctly.
+12. Effects do not persist forever.
+13. Restart still works.
+14. Next/previous level still works.
+15. Stars still work.
+16. Shots remaining still work.
+17. Sound toggle still works.
+18. Mobile touch controls still work.
+19. Desktop interaction still works if supported.
+20. Large collapse does not cause severe frame drops.
+21. Missing assets do not crash the game.
+22. Browser refresh works.
+23. Production build works.
+24. Vercel deployment works.
+
+
+FINAL IMPLEMENTATION RULE
+-------------------------
+
+Do not treat the artwork as a reason to rebuild Cannon Collapse.
+
+The desired result is:
+
+EXISTING GAMEPLAY
+       +
+NEW COHESIVE ART
+       +
+BETTER IMPACT FEEDBACK
+       +
+MOBILE POLISH
+       =
+CANNON COLLAPSE 2.0
+
+Implement in small commits/checkpoints.
+
+Suggested commit sequence:
+
+1. "Add Cannon Collapse art assets"
+2. "Wire cannon and projectile visuals"
+3. "Wire material block visuals"
+4. "Add destruction effects"
+5. "Add environment layers"
+6. "Polish collapse feedback"
+7. "Mobile HUD polish"
+8. "Performance and fallback cleanup"
+
+After each major checkpoint, verify the game still plays correctly.
