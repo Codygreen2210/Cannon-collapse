@@ -1,9 +1,11 @@
-/* Cannon Collapse (rough version). Plain boxes on purpose: this build is about feel. */
+/* Cannon Collapse: physics, aiming, shots, settle and judge, stars, sound, saved progress, the main loop and the test hook.
+   Drawing is in draw.js, effects in fx.js, material looks and sounds in materials.js (all loaded before this file). */
 (function () {
   'use strict';
   const M = window.Matter, Engine = M.Engine, Bodies = M.Bodies, Body = M.Body, Composite = M.Composite,
     Events = M.Events, Sleeping = M.Sleeping, Common = M.Common;
   const LEVELS = window.LEVELS, SETS = window.SETS, Constraint = M.Constraint;
+  const CC = window.CC, FX = CC.fx, LOOK = CC.MATERIALS;
 
   // ---- tuning (all speeds are pixels per 1/60 s) ----
   const W = 360, GROUND = 560, DT = 1000 / 120, GRAV = 1.15, G60 = 0.001 * GRAV * (1000 / 60) * (1000 / 60);
@@ -35,15 +37,15 @@
   } catch (e) { /* blocked or damaged: start fresh */ }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* blocked */ } }
   const setIdx = SETS.map((_, k) => LEVELS.map((l, i) => (l.set === k + 1 ? i : -1)).filter(i => i >= 0));
-  function starsOf(i) { return save.stars[LEVELS[i].id] || 0; }
+  function starsOf(i) { return LEVELS[i] ? save.stars[LEVELS[i].id] || 0 : 0; }
   function setStars(k) { return setIdx[k].reduce((a, i) => a + starsOf(i), 0); }
   function totalStars() { return LEVELS.reduce((a, l, i) => a + starsOf(i), 0); }
   function setOpen(k) { return cheat || k === 0 || setStars(k - 1) >= NEED; }
   function open(i) { const k = LEVELS[i].set - 1, j = setIdx[k].indexOf(i); return cheat || (setOpen(k) && (j === 0 || starsOf(setIdx[k][j - 1]) > 0)); }
 
   // ---- state ----
-  let engine, S, headless = false, particles = [], floaters = [];
-  let shake = 0, hitStop = 0, slowLeft = 0, speed = 1, winSlow = 0, lastShot = null, overTimer = 0;
+  let engine, S, headless = false;
+  let hitStop = 0, slowLeft = 0, speed = 1, winSlow = 0, lastShot = null, overTimer = 0;
   const $ = id => document.getElementById(id);
   const canvas = $('c'), ctx = canvas.getContext('2d');
 
@@ -83,10 +85,10 @@
     Composite.add(engine.world, [ground, pillar].concat(slabs, blocks, props, extra));
     S = { level: byNum ? src : -1, L, top, towerTop, plat: { x: p.x, w: p.w, pw, segs }, blocks, props, posts, balls: [], ammo: L.shots.slice(), sel: 0, used: 0,
       phase: 'aim', near: false, tick: 0, lastFire: -9999, quiet: 0, settled: false, queue: null, stars: 0,
-      pendBreak: [], pendBoom: [], remaining: blocks.length };
+      pendBreak: [], pendBoom: [], remaining: blocks.length, fell: [-999, -999, -999], rumbled: false };
     Events.on(engine, 'collisionStart', onCollide);
     for (let k = 0; k < 150; k++) Engine.update(engine, DT);   // let the tower take its weight before anyone looks
-    particles = []; floaters = []; shake = 0; hitStop = 0; slowLeft = 1.6; winSlow = 0; speed = 1;
+    hitStop = 0; slowLeft = 1.6; winSlow = 0; speed = 1; if (!headless) FX.clear();
   }
 
   function relSpeed(pair) {
@@ -113,16 +115,35 @@
       if (headless) continue;
       const pt = (pair.collision.supports && pair.collision.supports[0]) || A.position;
       if (blk && !blk.plugin.gone) {
-        const mat = (pa.mat === 'stone' || pb.mat === 'stone') ? 'stone' : (blk.plugin.mat === 'wood' ? 'wood' : 'stone');
-        if (v > 1.2) play(mat, Math.min(1, v / 11), mat === 'wood' ? 0.8 + 16 / Math.max(20, blk.plugin.w) * 0.5 : 0.9 + Math.random() * 0.2);
-        blk.plugin.flash = Math.min(1, v / 8);
-      } else if (!blk && v > 3) play('stone', Math.min(0.5, v / 22), 1.3);
+        const hard = v * (other.plugin.ball && other.plugin.type === 'h' ? 1.5 : 1);
+        struck(blk, other, pt, v, hard, ballHit);
+        if (other.plugin.mat && !other.plugin.gone && !other.plugin.prop) damage(other, blk, pt, v, v, false);
+      } else if (!blk && v > 3) { play('stone', Math.min(0.5, v / 22), 1.3); FX.dust(pt.x, pt.y, 2, 'tan', 0.7); }
       if (ballHit && blk && v > 4) {
-        shake = Math.max(shake, Math.min(9, v * 0.7)); hitStop = Math.max(hitStop, v > 8 ? 60 : 35);
-        dust(pt.x, pt.y, Math.min(10, v | 0), '#f2efe6');
+        FX.shake(v * 0.4); hitStop = Math.max(hitStop, v > 8 ? 60 : 35);
+        FX.sparks(pt.x, pt.y, Math.min(9, 2 + (v * 0.6 | 0)), v);
         if (v > 6) buzz(v > 10 ? 30 : 15);
-      } else if (v > 5 && blk) { dust(pt.x, pt.y, 4, '#b9b3a3'); shake = Math.max(shake, 2.5); }
+      } else if (v > 5 && blk) FX.shake(1.5 + (blk.mass > 2 ? 1 : 0));
     }
+  }
+  // ---- what a hit looks and sounds like (never changes the physics) ----
+  function struck(blk, other, pt, v, hard, ballHit) {
+    const p = blk.plugin, T = LOOK[p.mat], big = hard > T.hardAt;
+    if (v > 1.2) {       // pitch: small blocks ring higher, harder hits a little higher, and never quite the same twice
+      const size = Math.sqrt(p.w * p.h), rate = T.rate * Math.max(0.8, Math.min(1.3, 1.3 - size / 95)) * (0.95 + Math.min(0.12, v * 0.008) + FX.rnd() * 0.08);
+      play(big && T.hardSound ? T.hardSound : T.hit, Math.min(1, v / 11), rate);
+    }
+    p.flash = Math.min(1, v / 8);
+    damage(blk, other, pt, v, hard, ballHit);
+    if (other.isStatic && !ballHit && v > 2.2) FX.dust(pt.x, pt.y, Math.min(6, 2 + (v * blk.mass * 0.5 | 0)), p.mat === 'ice' ? 'frost' : 'tan', Math.min(1.9, 0.95 + blk.mass * 0.25));   // a block landing
+  }
+  function damage(blk, other, pt, v, hard, ballHit) {
+    const p = blk.plugin, T = LOOK[p.mat]; if (hard <= T.hardAt) return;
+    const dx = pt.x - blk.position.x, dy = pt.y - blk.position.y, c = Math.cos(-blk.angle), s = Math.sin(-blk.angle);
+    CC.addMark(p, dx * c - dy * s, dx * s + dy * c, FX.rnd);
+    const ox = pt.x - other.position.x, oy = pt.y - other.position.y, d = other.isStatic ? 0 : Math.hypot(ox, oy);
+    if (T.chips) FX.chips(pt.x, pt.y, Math.min(T.chips.n, 2 + (v * 0.5 | 0)), T.chips, v, d ? ox / d : 0, d ? oy / d : -1);
+    if (T.dust) FX.dust(pt.x, pt.y, ballHit ? 3 : 2, T.dust, 0.8);
   }
 
   function wakeAll() { for (const b of S.blocks) if (!b.plugin.gone) Sleeping.set(b, false); }
@@ -142,19 +163,13 @@
       if (b.plugin.mat === 'glass' && f > 0.35 && S.pendBreak.indexOf(b) < 0) { S.pendBreak.push(b); }
       if (b.plugin.mat === 'tnt' && f > 0.3 && S.pendBoom.indexOf(b) < 0) { S.pendBoom.push(b); }
     }
-    if (!headless) {
-      play('tnt', 1, 1); shake = 14; hitStop = 90; buzz(60);
-      for (let i = 0; i < 26; i++) { const a = Math.random() * 6.283, s = 2 + Math.random() * 7;
-        particles.push({ x: c.x, y: c.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2, life: 30 + Math.random() * 25, r: 3 + Math.random() * 5, c: i % 3 ? '#ffb23e' : '#fff3c4', g: 0.1 }); }
-      floaters.push({ x: c.x, y: c.y, r: 10, ring: true, life: 18 });
-    }
+    if (!headless) { play('tnt', 1, 0.95 + FX.rnd() * 0.1); FX.shake(5); hitStop = 90; buzz(60); FX.boom(c.x, c.y); FX.bigEvent(); }
   }
   function shatter(b) {
     const c = b.position, p = b.plugin; removeBlock(b);
     if (headless) return;
-    play('glass', 0.9, 0.9 + Math.random() * 0.25); shake = Math.max(shake, 4); buzz(12);
-    for (let i = 0; i < 14; i++) particles.push({ x: c.x + (Math.random() - 0.5) * p.w, y: c.y + (Math.random() - 0.5) * p.h,
-      vx: (Math.random() - 0.3) * 5, vy: -Math.random() * 4, life: 35 + Math.random() * 25, r: 2 + Math.random() * 4, c: '#bfe9f5', g: 0.28, sq: true });
+    play('glass', 0.9, 0.9 + FX.rnd() * 0.25); FX.shake(2.5); buzz(12);
+    FX.shatter(c.x, c.y, p.w, p.h, b.angle, LOOK.glass.shards);
   }
 
   function canFire() { return S.phase === 'aim' && S.ammo.length > 0 && S.tick - S.lastFire >= MIN_GAP; }
@@ -167,14 +182,17 @@
     const spec = BALL[type], v = (VMIN + (VMAX - VMIN) * pw) * spec.speed, dx = Math.cos(a), dy = -Math.sin(a);
     const ball = Bodies.circle(CANNON.x + dx * CANNON.len, CANNON.y + dy * CANNON.len, spec.r,
       { density: spec.density, friction: 0.4, frictionAir: 0, restitution: 0.22 });
-    ball.plugin = { ball: true, type, born: S.tick, hit: false, trail: [] };
+    ball.plugin = { ball: true, type, born: S.tick, hit: false, trail: null, th: 0, tn: 0, tcap: 0 };
     Composite.add(engine.world, ball); Body.setVelocity(ball, { x: dx * v, y: dy * v });
     S.balls.push(ball); S.used++; S.lastFire = S.tick; S.quiet = 0; S.settled = false;
-    if (!headless) { lastShot = { level: S.level, angle: angleDeg, power: pw, type }; play('launch', 0.5 + pw * 0.5, type === 'h' ? 0.78 : 1.05 - pw * 0.1); shake = Math.max(shake, 2 + pw * 3); buzz(10);
-      dust(ball.position.x, ball.position.y, 7, '#f2efe6'); recoil = 1; renderAmmo(); setHint(); }
+    if (!headless) {
+      const bp = ball.plugin; bp.tcap = 6 + Math.round(pw * 7); bp.trail = new Float32Array(bp.tcap * 2);     // a harder shot leaves a longer trail
+      lastShot = { level: S.level, angle: angleDeg, power: pw, type }; S.fell[0] = S.fell[1] = S.fell[2] = -999; S.rumbled = false;
+      play('launch', 0.55 + pw * 0.45, type === 'h' ? 0.8 : 1.06 - pw * 0.1); FX.shake(1 + pw * 1.5); buzz(10);
+      FX.fired(pw, ball.position.x, ball.position.y, dx, dy); renderAmmo(); setHint();
+    }
     return true;
   }
-  let recoil = 0;
 
   function step() {
     Engine.update(engine, DT); S.tick++;
@@ -190,7 +208,7 @@
       const p = b.plugin;
       if (!p.cleared && (b.position.y > S.top + 5 || b.position.x < -30 || b.position.x > W + 30)) {
         p.cleared = true;
-        if (!headless) floaters.push({ x: Math.max(20, Math.min(W - 20, b.position.x)), y: Math.min(b.position.y, S.top) - 6, text: '', pop: true, life: 22 });
+        if (!headless) fellOff(b);
       }
       if (p.cleared) continue;
       remaining++;
@@ -204,8 +222,9 @@
       if (S.tick - p.born > 720 || pos.y > GROUND + 60 || pos.x < -80 || pos.x > W + 220) { Composite.remove(engine.world, b); S.balls.splice(i, 1); continue; }
       if (!p.hit) flying = true;
       else if (pos.y < S.top && Body.getSpeed(b) > 0.3) moving = true;
-      if (!headless && (S.tick & 1)) { p.trail.push(pos.x, pos.y); if (p.trail.length > 36) p.trail.splice(0, 2); }
+      if (!headless && (S.tick & 1)) { p.trail[p.th * 2] = pos.x; p.trail[p.th * 2 + 1] = pos.y; p.th = (p.th + 1) % p.tcap; if (p.tn < p.tcap) p.tn++; }
     }
+    if (!headless && S.tick - S.lastFire === MIN_GAP && S.ammo.length && S.phase === 'aim') play('reload', 0.5, 1);   // next ball is ready
     S.quiet = moving || flying ? 0 : S.quiet + 1;
     const since = S.tick - S.lastFire;
     S.settled = (since >= SETTLE_MIN && S.quiet >= SETTLE_QUIET) || since >= SETTLE_CAP;
@@ -215,15 +234,21 @@
     if (S.queue && S.queue.length && (S.used === 0 || S.settled)) { const q = S.queue.shift(); fire(q[0], q[1], q[2]); }
   }
 
+  // A block has left the platform (live play only): a small ring, and if it is the third inside half a second, the one big moment of the shot.
+  function fellOff(b) {
+    FX.ring(Math.max(20, Math.min(W - 20, b.position.x)), Math.min(b.position.y, S.top) - 6, '#7fd1ae', 22, 6, 1.2);
+    const f = S.fell; f[0] = f[1]; f[1] = f[2]; f[2] = S.tick;
+    if (S.tick - f[0] <= 60 && !S.rumbled) { S.rumbled = true; play('rumble', 0.9, 0.95 + FX.rnd() * 0.1); FX.shake(3); buzz(40); FX.bigEvent(); }
+  }
+
   function starsFor(used, allowed) { const left = allowed - used; return used === 1 || left >= 2 ? 3 : (left === 1 ? 2 : 1); }
   function win() {
     S.phase = 'won'; S.stars = starsFor(S.used, S.L.shots.length);
     if (headless) return;
-    save.stars[S.L.id] = Math.max(starsOf(S.level), S.stars); persist();
+    if (S.level >= 0) { save.stars[S.L.id] = Math.max(starsOf(S.level), S.stars); persist(); }
     winSlow = 450; play('clear', 0.9, 1); buzz([20, 40, 30]);
-    for (let i = 0; i < 60; i++) { const a = -Math.random() * 3.1416, s = 3 + Math.random() * 8;
-      particles.push({ x: S.plat.x + (Math.random() - 0.5) * S.plat.w, y: S.top - 10, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 60 + Math.random() * 50,
-        r: 3 + Math.random() * 3, c: ['#ffd257', '#f2efe6', '#7fd1ae', '#ff8a5c'][i % 4], g: 0.16, sq: true }); }
+    for (let i = 0; i < S.stars; i++) play('star', 0.75, 1 + i * 0.122, 0.7 + i * 0.2);     // one chime per star, rising
+    FX.confetti(S.plat.x, S.top - 10, S.plat.w, 44);
     clearTimeout(overTimer); overTimer = setTimeout(showOver, 650); setHint(); renderHud();
   }
   function lose() {
@@ -282,33 +307,32 @@
   }
   function start(i) {
     hideOver(); build(i); aim = null; place(); renderHud(); renderAmmo(); setHint();
-    if (save.at !== S.L.id) { save.at = S.L.id; persist(); }
+    if (S.level >= 0 && save.at !== S.L.id) { save.at = S.L.id; persist(); }
   }
 
   // ---- sound (Web Audio, started on first touch) ----
-  let actx = null, master = null; const SND = {}, lastPlay = {};
+  let actx = null, master = null, started = 0; const SND = {}, lastPlay = {}, MAX_STARTS = 3;      // at most 3 new sounds per drawn frame
+  const SOUNDS = ['launch', 'reload', 'wood', 'woodcrack', 'stone', 'clink', 'glass', 'ice', 'tnt', 'rumble', 'star', 'clear', 'near'];
   function initAudio() {
     if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      actx = new AC(); master = actx.createGain(); master.gain.value = 0.9; master.connect(actx.destination);
-      ['launch', 'wood', 'stone', 'glass', 'tnt', 'clear', 'near'].forEach(n => {
+      actx = new AC(); master = actx.createGain(); master.gain.value = 0.9;
+      const lim = actx.createDynamicsCompressor(); lim.threshold.value = -10; lim.ratio.value = 6; lim.attack.value = 0.003; lim.release.value = 0.15;   // a pile of hits at once stays clean
+      master.connect(lim); lim.connect(actx.destination);
+      SOUNDS.forEach(n => {
         fetch('sfx/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => actx.decodeAudioData(b)).then(buf => { SND[n] = buf; }).catch(() => {});
       });
     } catch (e) { actx = null; }
   }
-  function play(n, vol, rate) {
+  function play(n, vol, rate, delay) {
     if (!actx || save.muted || !SND[n]) return;
-    const now = actx.currentTime; if (lastPlay[n] && now - lastPlay[n] < 0.045) return; lastPlay[n] = now;
+    const now = actx.currentTime;
+    if (!delay) { if (started >= MAX_STARTS || (lastPlay[n] && now - lastPlay[n] < 0.06)) return; lastPlay[n] = now; started++; }
     try { const s = actx.createBufferSource(), g = actx.createGain(); s.buffer = SND[n]; s.playbackRate.value = rate || 1;
-      g.gain.value = Math.max(0.05, Math.min(1, vol)); s.connect(g); g.connect(master); s.start(); } catch (e) { /* ignore */ }
+      g.gain.value = Math.max(0.05, Math.min(1, vol)); s.connect(g); g.connect(master); s.start(now + (delay || 0)); } catch (e) { /* ignore */ }
   }
   function buzz(p) { if (save.muted) return; try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* ignore */ } }
-  function dust(x, y, n, c) {
-    for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, s = 0.5 + Math.random() * 2.5;
-      particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.8, life: 14 + Math.random() * 14, r: 1.5 + Math.random() * 2.5, c, g: 0.05 }); }
-  }
-
   // ---- view ----
   // The world never changes size. The view shows world x from XL to XL + VW, scaled to the screen width,
   // and slides up or down per level so the tower top sits just under the top bar and spare height becomes
@@ -323,7 +347,7 @@
   }
   function resize() {
     const vw = window.innerWidth, vh = window.innerHeight;
-    scale = Math.min(vw / VW, vh / VH_MIN); VH = vh / scale; dpr = Math.min(3, window.devicePixelRatio || 1);
+    scale = Math.min(vw / VW, vh / VH_MIN); VH = vh / scale; dpr = Math.min(2, window.devicePixelRatio || 1);
     const cw = Math.round(VW * scale);
     $('wrap').style.width = cw + 'px'; canvas.style.width = cw + 'px'; canvas.style.height = vh + 'px';
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(vh * dpr);
@@ -377,141 +401,37 @@
   let flashTimer = 0;
   function flash(msg) { $('hint').textContent = msg; clearTimeout(flashTimer); flashTimer = setTimeout(setHint, 2600); }
 
-  // ---- drawing ----
-  const COL = { wood: '#d9a441', stone: '#8d939c', glass: 'rgba(150,215,238,0.5)', tnt: '#d8432f', ice: '#9fd4f0' };
-  function drawBlock(b) {
-    const p = b.plugin, w = p.w, h = p.h;
-    ctx.save(); ctx.translate(b.position.x, b.position.y); ctx.rotate(b.angle);
-    ctx.globalAlpha = p.cleared ? 0.38 : 1;
-    ctx.fillStyle = COL[p.mat]; ctx.fillRect(-w / 2, -h / 2, w, h);
-    ctx.lineWidth = p.mat === 'stone' ? 3 : 2; ctx.strokeStyle = p.mat === 'glass' ? '#dff6ff' : '#1c2530';
-    ctx.strokeRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2);
-    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(28,37,48,0.55)'; ctx.fillStyle = 'rgba(28,37,48,0.6)';
-    if (p.mat === 'wood') {                       // grain lines along the long side
-      ctx.beginPath();
-      if (w >= h) { for (let k = 1; k <= 2; k++) { const y = -h / 2 + h * k / 3; ctx.moveTo(-w / 2 + 5, y); ctx.lineTo(w / 2 - 5, y); } }
-      else { for (let k = 1; k <= 2; k++) { const x = -w / 2 + w * k / 3; ctx.moveTo(x, -h / 2 + 5); ctx.lineTo(x, h / 2 - 5); } }
-      ctx.stroke();
-    } else if (p.mat === 'stone') {               // speckles
-      const n = Math.max(3, Math.round(w * h / 320));
-      for (let k = 0; k < n; k++) { const fx = ((k * 37 + 11) % 100) / 100 - 0.5, fy = ((k * 61 + 29) % 100) / 100 - 0.5; ctx.fillRect(fx * (w - 12) - 1.5, fy * (h - 12) - 1.5, 3, 3); }
-    } else if (p.mat === 'glass') {               // shine streaks
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); const s = Math.min(w, h) * 0.5;
-      ctx.moveTo(-w / 2 + 3, -h / 2 + 3 + s); ctx.lineTo(-w / 2 + 3 + s, -h / 2 + 3); ctx.stroke();
-    } else if (p.mat === 'ice') {                 // two pale slashes
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2; ctx.beginPath(); const s = Math.min(w, h) * 0.45;
-      ctx.moveTo(-s / 2, s / 4); ctx.lineTo(s / 4, -s / 2); ctx.moveTo(-s / 6, s / 2); ctx.lineTo(s / 2, -s / 6); ctx.stroke();
-    } else {                                      // TNT label
-      ctx.fillStyle = '#fff'; ctx.font = '800 ' + Math.min(12, w * 0.4) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TNT', 0, 1);
-    }
-    if (p.prop === 'pin') { ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.2832); ctx.fillStyle = '#1c2530'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#f2efe6'; ctx.stroke(); }
-    if (p.flash > 0.02) { ctx.globalAlpha = p.flash * 0.7; ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2, -h / 2, w, h); p.flash *= 0.8; }
-    ctx.restore();
-  }
-  function drawBall(x, y, type, alpha) {
-    const r = BALL[type].r; ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832);
-    ctx.fillStyle = type === 'h' ? '#3b3f46' : '#f2efe6'; ctx.fill();
-    ctx.lineWidth = type === 'h' ? 3 : 2; ctx.strokeStyle = type === 'h' ? '#f2efe6' : '#1c2530'; ctx.stroke(); ctx.globalAlpha = 1;
-  }
-  function arc(angle, power, type, style, maxLen) {
-    const a = angle * Math.PI / 180, v = (VMIN + (VMAX - VMIN) * power) * BALL[type].speed;
-    const x0 = CANNON.x + Math.cos(a) * CANNON.len, y0 = CANNON.y - Math.sin(a) * CANNON.len, vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
-    ctx.fillStyle = style; let len = 0, lx = x0, ly = y0, next = 10, k = 0;
-    for (let t = 0.25; t < 60 && len < maxLen; t += 0.25) {
-      const x = x0 + vx * t, y = y0 + vy * t + 0.5 * G60 * t * t; len += Math.hypot(x - lx, y - ly); lx = x; ly = y;
-      if (len >= next) { next += 10; k++; const f = 1 - len / maxLen; ctx.globalAlpha = 0.25 + 0.75 * f; ctx.beginPath(); ctx.arc(x, y, 1.6 + 1.6 * f, 0, 6.2832); ctx.fill(); }
-    }
-    ctx.globalAlpha = 1;
-  }
-  function draw() {
-    const cw = canvas.width, ch = canvas.height;
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#1c2530'; ctx.fillRect(0, 0, cw, ch);
-    const sx = shake > 0.3 ? (Math.random() - 0.5) * shake : 0, sy = shake > 0.3 ? (Math.random() - 0.5) * shake : 0;
-    // plain backdrop, fixed to the screen: lighter towards the horizon, a few flat clouds, far hills
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, -XL * dpr * scale, oy * dpr * scale);
-    const skyTop = -oy, sky = ctx.createLinearGradient(0, skyTop, 0, GROUND); sky.addColorStop(0, '#141b24'); sky.addColorStop(1, '#2b3c4d');
-    ctx.fillStyle = sky; ctx.fillRect(0, skyTop, W, GROUND - skyTop);
-    const span = GROUND - skyTop - hudB; ctx.fillStyle = 'rgba(242,239,230,0.055)';
-    [[60, 0.16, 96], [250, 0.3, 70], [150, 0.52, 120], [300, 0.66, 60]].forEach(c => { const y = skyTop + hudB + span * c[1]; ctx.fillRect(c[0] - c[2] / 2, y, c[2], 12); ctx.fillRect(c[0] - c[2] / 4, y - 9, c[2] / 2, 9); });
-    ctx.fillStyle = '#263442'; ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(40, GROUND - 46); ctx.lineTo(120, GROUND - 46); ctx.lineTo(170, GROUND - 18); ctx.lineTo(230, GROUND - 64); ctx.lineTo(300, GROUND - 64); ctx.lineTo(W, GROUND - 20); ctx.lineTo(W, GROUND); ctx.closePath(); ctx.fill();
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, (sx - XL) * dpr * scale, (oy + sy) * dpr * scale);
-    // ground
-    ctx.fillStyle = '#2c3a33'; ctx.fillRect(-20, GROUND, W + 40, VH); ctx.fillStyle = '#44584d'; ctx.fillRect(-20, GROUND, W + 40, 4);
-    // platform (ice sections are pale blue)
-    const P = S.plat; ctx.fillStyle = '#56606e'; ctx.fillRect(P.x - P.pw / 2, S.top + 14, P.pw, GROUND - S.top - 14);
-    for (const g of P.segs) { ctx.fillStyle = g[2] ? '#bfe6fa' : '#c9c4b6'; ctx.fillRect(g[0], S.top, g[1] - g[0], 14); if (g[2]) { ctx.fillStyle = '#fff'; ctx.fillRect(g[0], S.top, g[1] - g[0], 3); } }
-    ctx.fillStyle = '#1c2530'; ctx.fillRect(P.x - P.w / 2, S.top + 11, P.w, 3);
-    // last shot marker (so a retry can be a correction, not a guess)
-    const aiming = aim && aim.live, curType = S.ammo[Math.min(S.sel, S.ammo.length - 1)] || 'n';
-    if (lastShot && lastShot.level === S.level && S.phase === 'aim' && S.used === 0) arc(lastShot.angle, lastShot.power, lastShot.type, '#6f7c8c', 70);
-    if (aiming) arc(aim.angle, aim.power, curType, '#ffd257', ARC_LEN);
-    // blocks, balls
-    // pivots, ropes, blocks, balls
-    for (const q of S.posts) { ctx.fillStyle = '#56606e'; ctx.beginPath(); ctx.moveTo(q.x - 11, S.top); ctx.lineTo(q.x + 11, S.top); ctx.lineTo(q.x + 3, q.y); ctx.lineTo(q.x - 3, q.y); ctx.closePath(); ctx.fill(); }
-    for (const b of S.props) {
-      const p = b.plugin; if (p.prop !== 'rope' || p.gone) continue;
-      const c = Math.cos(b.angle), s = Math.sin(b.angle), tx = b.position.x + s * p.h / 2, ty = b.position.y - c * p.h / 2;
-      ctx.strokeStyle = 'rgba(201,196,182,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.ax, p.ay); ctx.lineTo(p.ax, -oy + hudB + 4); ctx.stroke();
-      ctx.strokeStyle = '#c9c4b6'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(p.ax, p.ay); ctx.lineTo(tx, ty); ctx.stroke();
-      ctx.beginPath(); ctx.arc(p.ax, p.ay, 5, 0, 6.2832); ctx.fillStyle = '#c9c4b6'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#1c2530'; ctx.stroke();
-    }
-    for (const b of S.props) if (!b.plugin.gone) drawBlock(b);
-    for (const b of S.blocks) if (!b.plugin.gone) drawBlock(b);
-    for (const b of S.balls) {
-      const t = b.plugin.trail; for (let i = 0; i < t.length; i += 2) { ctx.globalAlpha = 0.04 + 0.25 * i / t.length; ctx.fillStyle = '#f2efe6'; ctx.beginPath(); ctx.arc(t[i], t[i + 1], BALL[b.plugin.type].r * (0.3 + 0.6 * i / t.length), 0, 6.2832); ctx.fill(); }
-      drawBall(b.position.x, b.position.y, b.plugin.type, 1);
-    }
-    // cannon
-    const ang = aiming ? aim.angle : (lastShot && lastShot.level === S.level ? lastShot.angle : 30), ar = ang * Math.PI / 180;
-    ctx.fillStyle = '#56606e'; ctx.fillRect(CANNON.x - 16, CANNON.y + 6, 32, GROUND - CANNON.y - 6);
-    ctx.save(); ctx.translate(CANNON.x, CANNON.y); ctx.rotate(-ar);
-    const rc = recoil * 7 + (aiming ? aim.power * 5 : 0); recoil *= 0.86;
-    ctx.fillStyle = '#f2efe6'; ctx.fillRect(-12 - rc, -9, CANNON.len + 12, 18); ctx.fillStyle = '#1c2530'; ctx.fillRect(CANNON.len - 5 - rc, -9, 3, 18);
-    ctx.restore();
-    ctx.beginPath(); ctx.arc(CANNON.x, CANNON.y + 4, 12, 0, 6.2832); ctx.fillStyle = '#ffd257'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#1c2530'; ctx.stroke();
-    if (aiming) {   // power bar by the cannon + the pull itself under the thumb
-      ctx.fillStyle = 'rgba(242,239,230,0.25)'; ctx.fillRect(CANNON.x - 22, CANNON.y + 34, 44, 6); ctx.fillStyle = '#ffd257'; ctx.fillRect(CANNON.x - 22, CANNON.y + 34, 44 * aim.power, 6);
-      ctx.strokeStyle = 'rgba(242,239,230,0.55)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(aim.sx, aim.sy); ctx.lineTo(aim.x, aim.y); ctx.stroke(); ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 5, 0, 6.2832); ctx.fillStyle = 'rgba(242,239,230,0.6)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(aim.x, aim.y, 13 + aim.power * 6, 0, 6.2832); ctx.stroke();
-    }
-    // particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.985; p.life--;
-      if (p.life <= 0) { particles.splice(i, 1); continue; }
-      ctx.globalAlpha = Math.min(1, p.life / 18); ctx.fillStyle = p.c;
-      if (p.sq) ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2); else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill(); }
-    }
-    for (let i = floaters.length - 1; i >= 0; i--) {
-      const f = floaters[i]; f.life--; if (f.life <= 0) { floaters.splice(i, 1); continue; }
-      ctx.globalAlpha = f.life / 22; ctx.strokeStyle = f.ring ? '#fff3c4' : '#7fd1ae'; ctx.lineWidth = f.ring ? 5 : 3;
-      const r = f.ring ? 10 + (18 - f.life) * 7 : 6 + (22 - f.life) * 1.2; ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, 6.2832); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    // text on the field
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    if (S.L.tip && S.used === 0 && !aiming && S.phase === 'aim') { ctx.fillStyle = '#f2efe6'; ctx.font = '700 16px system-ui, sans-serif'; ctx.fillText(S.L.tip, XL + VW / 2, -oy + hudB + 30); }
-    if (S.phase === 'aim' && S.remaining > 0 && S.used > 0) {
-      ctx.fillStyle = S.remaining <= 2 ? '#ffd257' : 'rgba(242,239,230,0.7)'; ctx.font = '700 15px system-ui, sans-serif';
-      ctx.fillText(S.remaining + (S.remaining === 1 ? ' block left' : ' blocks left'), Math.min(S.plat.x, W - 62), GROUND + 24);
-    }
-    shake *= 0.86;
-  }
+  // ---- drawing (draw.js does it; G is the one object handed over, reused every frame) ----
+  const G = { ctx, canvas, S: null, aim: null, lastShot: null, scale: 1, oy: 0, dpr: 1, VH: 640, hudB: 80,
+    K: { W, GROUND, CANNON, BALL, XL, VW, VMIN, VMAX, G60, ARC_LEN } };
+  FX.setFloor(GROUND + 2);
+  function draw() { G.S = S; G.aim = aim; G.lastShot = lastShot; G.scale = scale; G.oy = oy; G.dpr = dpr; G.VH = VH; G.hudB = hudB; CC.draw(G); }
 
   // ---- main loop: fixed physics step, same on fast and slow phones ----
-  let last = 0, acc = 0;
+  let last = 0, acc = 0, frozen = false; const perf = { ms: 0, n: 0, worst: 0 };
   function frame(t) {
     requestAnimationFrame(frame);
-    let dt = Math.min(50, t - last || 16); last = t;
+    const dt = Math.min(50, t - last || 16); last = t;
+    if (!frozen) tick(dt);
+  }
+  function tick(raw) {
+    const t0 = performance.now(), calm = FX.isReduced(); let dt = raw;
+    started = 0;
     if (hitStop > 0) { hitStop -= dt; dt = 0; }
-    let target = 1;
+    // Slow motion only changes how many fixed steps run per drawn frame, never the steps themselves.
+    let target = FX.cam(raw);
     if (S.phase === 'aim' && S.ammo.length === 0 && S.remaining > 0 && S.remaining <= 2 && S.quiet === 0 && slowLeft > 0 && S.tick - S.lastFire > 30) { target = 0.35; slowLeft -= dt / 1000; }
     if (winSlow > 0) { target = 0.25; winSlow -= dt; }
+    if (calm) target = 1;
     speed += (target - speed) * 0.25;
     acc += dt * speed; let n = 0;
     while (acc >= DT && n < 8) { step(); acc -= DT; n++; }
     if (n === 8) acc = 0;
+    for (const b of S.blocks) { const p = b.plugin; if (p.flash > 0.02) p.flash *= 0.8; }
+    for (const b of S.props) { const p = b.plugin; if (p.flash > 0.02) p.flash *= 0.8; }
+    FX.update(dt * speed / (1000 / 60));
     draw();
+    const ms = performance.now() - t0; perf.ms += ms; perf.n++; if (ms > perf.worst) perf.worst = ms;
   }
 
   // ---- test hook (used by tools/play-check.mjs) ----
@@ -523,9 +443,15 @@
     fire, goto: start, restart: () => start(S.level),
     queue(shots) { S.queue = shots.map(s => s.slice()); },
     unlockAll() { cheat = true; renderHud(); },
+    /* Looks: stop the clock (nothing moves or fades), then move on by whole frames. Used to take pictures of exact moments. */
+    freeze(on) { frozen = !!on; },
+    advance(frames) { for (let k = 0; k < (frames || 1); k++) tick(1000 / 60); },
+    /* Frame cost and particle count since the last perfReset(). */
+    perfReset() { perf.ms = 0; perf.n = 0; perf.worst = 0; FX.resetPeak(); },
+    perf() { const f = FX.stats(); return { frames: perf.n, avgMs: perf.n ? perf.ms / perf.n : 0, worstMs: perf.worst, particles: f.alive, peak: f.peak, cap: f.cap, shake: f.shake, slows: f.slows, reduced: f.reduced, speed, dpr }; },
     lockAgain() { cheat = false; renderHud(); },
     state() {
-      const B = b => ({ m: b.plugin.mat, prop: b.plugin.prop || null, x: b.position.x, y: b.position.y, a: b.angle, hx: b.plugin.hx, hy: b.plugin.hy, cleared: b.plugin.cleared, gone: b.plugin.gone });
+      const B = b => ({ m: b.plugin.mat, prop: b.plugin.prop || null, x: b.position.x, y: b.position.y, a: b.angle, hx: b.plugin.hx, hy: b.plugin.hy, cleared: b.plugin.cleared, gone: b.plugin.gone, marks: b.plugin.marks ? b.plugin.marks.length : 0 });
       return { level: S.level, id: S.L.id, set: S.L.set, phase: S.phase, near: S.near, remaining: S.remaining, total: S.blocks.length, shotsLeft: S.ammo.length, ammo: S.ammo.slice(),
         used: S.used, tick: S.tick, settled: S.settled, stars: S.stars, top: S.top, towerTop: S.towerTop, aiming: !!(aim && aim.live), aim: aim && { angle: aim.angle, power: aim.power },
         overlay: !$('over').hidden, overlayText: $('overText').textContent, hint: $('hint').textContent, lvlText: $('lvlText').textContent, total_stars: totalStars(),
