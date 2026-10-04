@@ -28,3 +28,6 @@ Cody plays the 40 levels and says what is too hard, too easy or dull. Then step 
 - Not judged by ear: nobody has heard the new sounds on a phone. The low ones (cannon, stone, TNT, rumble) may be thin on a phone speaker.
 - Not done: the top bar and shot icons still have the old look (that is his phase 4); the shot icons are white while the ball is now iron grey.
 - Next: Cody plays the branch on his phone and says what feels right or wrong; then phase 2 (puzzle depth).
+- Oct 4, 6:40pm: Phase 1 finished on branch `phase1-polish` (pushed, NOT merged; Cody merges). The live link currently serves this branch, deployed by hand. Play check passes (138 checks); physics check shows all 40 levels identical to the baseline taken before the polish. Sounds passed listen.py (-17.2 LUFS, -4.4 dBTP, nothing flagged).
+- Open after Phase 1, for Cody's ear and thumb: sounds never heard on a phone (cannon, stone, TNT, rumble may be thin); landing dust is faint; the older win and near-miss slow-downs can stack with the new slow moment; shot icons are still plain white.
+- Next per the handoff: Phase 2, puzzle depth (weak point, chain reactions, bank shots, challenge objectives). Do not start it until Cody has played Phase 1.
