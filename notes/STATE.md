@@ -10,3 +10,7 @@
 
 ## Next
 Cody plays the 40 levels and says what is too hard, too easy or dull. Then step 3.
+
+## Vercel (Oct 4)
+- The live site now deploys from this repo's `main` (deployment made by hand through the Vercel connector). Root directory is the repo root.
+- STILL TO DO BY CODY: the Vercel project's Git link still points at Codygreen2210/Claudes-choice, so pushes here do not deploy by themselves yet. In Vercel: project `cannon-collapse` > Settings > Git > disconnect, then connect Codygreen2210/cannon-collapse. Until then a guard (Ignored Build Step) skips any build that does not come from this repo, so a merge in Claudes-choice cannot overwrite the live game. After relinking, that guard can be cleared.
