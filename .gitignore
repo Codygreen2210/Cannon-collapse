@@ -1,0 +1,7 @@
+node_modules/
+screens/
+tools/sfx-build/
+__pycache__/
+*.wav
+*.mp4
+.usage-logs/

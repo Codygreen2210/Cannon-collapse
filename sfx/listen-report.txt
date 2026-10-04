@@ -1,0 +1,50 @@
+BEFORE (first pass, peak 0.99):
+all-effects.wav: 0:06.5 long
+tempo 117.4 BPM (confidence 0.42); key G minor (fit 0.75, runner-up Bb major)
+loudness -11.9 LUFS integrated, true peak -0.1 dBTP, loudness range 1.6 LU, crest 15.4 dB
+stereo: side -120.0 dB below mid, correlation 1.00
+energy: sub 7%, bass 54%, low-mid 37%, high-mid 2%, air 0%  (bass-forward; dark: almost nothing above 6 kHz)
+
+chords by bar (4 beats):
+  | N Ab Cm  | Bb N     | G N      
+
+melody (top line): 11 notes, range G3–Bb6 (39 semitones), 5 leaps of a 4th or more, most used: Bb, B, G
+  contour: ^^-v-^^vvv
+  notes: G3 Ab4 Bb6 Bb6 B4 B4 D5 G5 E4 D4 Bb3
+
+sections:
+  A   0:00.0–0:06.5   -11.6 LUFS  brightness   392 Hz   2.0 hits/s  chords: Ab Cm Bb G
+
+listen out for:
+  - true peak -0.1 dBTP, over -1: may distort after MP3/AAC encoding
+  - silence gap 0:00.7–0:01.0
+  - silence gap 0:01.2–0:01.5
+  - silence gap 0:01.8–0:02.2
+  - silence gap 0:02.7–0:03.0
+  - silence gap 0:03.7–0:04.1
+  - silence gap 0:04.8–0:05.2
+
+AFTER (peak 0.6, glass capped at 5.2 kHz) - this is what is in the game:
+all-effects.wav: 0:06.5 long
+tempo 117.4 BPM (confidence 0.41); key G minor (fit 0.75, runner-up Bb major)
+loudness -16.2 LUFS integrated, true peak -4.4 dBTP, loudness range 1.6 LU, crest 15.4 dB
+stereo: side -120.0 dB below mid, correlation 1.00
+energy: sub 7%, bass 54%, low-mid 37%, high-mid 2%, air 0%  (bass-forward; dark: almost nothing above 6 kHz)
+
+chords by bar (4 beats):
+  | N Ab Cm  | Bb N     | G N      
+
+melody (top line): 11 notes, range G3–Bb6 (39 semitones), 5 leaps of a 4th or more, most used: Bb, D, G
+  contour: ^^-v^-^vvv
+  notes: G3 Ab4 Bb6 Bb6 B4 D5 D5 G5 E4 D4 Bb3
+
+sections:
+  A   0:00.0–0:06.5   -16.0 LUFS  brightness   392 Hz   2.0 hits/s  chords: Ab Cm Bb G
+
+listen out for:
+  - silence gap 0:00.7–0:01.0
+  - silence gap 0:01.2–0:01.5
+  - silence gap 0:01.8–0:02.2
+  - silence gap 0:02.7–0:03.0
+  - silence gap 0:03.7–0:04.1
+  - silence gap 0:04.8–0:05.2

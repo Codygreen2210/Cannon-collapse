@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1c2530">
+<title>Cannon Collapse</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" aria-label="Game area. Drag to aim, let go to fire."></canvas>
+  <div id="hud">
+    <button id="prev" class="hb" aria-label="Previous level">&lsaquo;</button>
+    <div id="lvl"><span id="lvlSet">Timber,</span><span id="lvlText">level 1 of 10</span><span id="lvlStars" aria-label="Best stars"></span></div>
+    <button id="next" class="hb" aria-label="Next level">&rsaquo;</button>
+    <span class="sp"></span>
+    <button id="mute" class="hb" aria-label="Sound on or off">Sound</button>
+    <button id="restart" class="hb" aria-label="Restart level">Restart</button>
+  </div>
+  <div id="sets" aria-label="Sets"></div>
+  <div id="hint"></div>
+  <div id="ammo" aria-label="Shots left. Tap a ball to pick it."></div>
+  <div id="over" hidden>
+    <div id="overStars"></div>
+    <div id="overText"></div>
+    <div id="overBtns">
+      <button id="again">Again</button>
+      <button id="nextBtn">Next</button>
+    </div>
+  </div>
+</div>
+<script src="vendor/matter.min.js"></script>
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
