@@ -1,11 +1,12 @@
 // Play-check for Cannon Collapse. From the repo root:
-//   node daily/2026-10-04-cannon-collapse/tools/play-check.mjs [--quick] [--levels=3,17]
-// Starts its own static server, drives the game in headless Chromium, prints a per-level table, saves screenshots to screens/.
+//   node tools/play-check.mjs [--quick] [--levels=3,17]
+// Starts its own static server (any address given is ignored), drives the game in headless Chromium, prints a per-level table, saves screenshots to screens/.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import { BIG } from './big-tower.mjs';
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= '/opt/pw-browsers';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), DIR = path.resolve(HERE, '..');
@@ -237,6 +238,36 @@ try {
   await d.page.evaluate(() => window.__cc.unlockAll()); const fd = await fit(d.page);
   note(fd.bad.length === 0 && await noScroll(d.page), 'every level fits on desktop (1280x800), no scroll' + (fd.bad.length ? ': ' + fd.bad.slice(0, 3).join('; ') : ''));
   await d.ctx.close();
+
+  // 12. effects (looks only): a 14-block tower brought down live. Frame cost, particle cap, one slow moment, shake; none of it in the headless path; all of it off with reduced motion
+  const watch = (page, ms) => page.evaluate(ms => new Promise(done => {     // sample shake and game speed every frame for a while
+    const t0 = performance.now(); let shake = 0, slowest = 1, part = 0;
+    const f = () => { const p = window.__cc.perf(); shake = Math.max(shake, p.shake); slowest = Math.min(slowest, p.speed); part = Math.max(part, p.particles);
+      if (performance.now() - t0 < ms) requestAnimationFrame(f); else done(Object.assign(p, { maxShake: shake, slowest, maxParticles: part, state: window.__cc.state() })); }; f(); }), ms);
+  {
+    const o = await open(390, 844);
+    const pick = await o.page.evaluate(L => {
+      let best = null; window.__cc.perfReset();
+      for (const a of [40, 46, 52, 58, 64]) for (const pw of [0.8, 0.9, 1]) { const r = window.__cc.run(L, [[a, pw, 'h']]); if (!best || r.remaining < best.remaining) best = { shot: [a, pw, 'h'], remaining: r.remaining }; }
+      return Object.assign(best, { peakAfterHeadless: window.__cc.perf().peak });
+    }, BIG);
+    note(BIG.blocks.length >= 12 && BIG.blocks.length - pick.remaining >= 3, `a ${BIG.blocks.length}-block tower: one heavy shot (${pick.shot[0]} degrees, power ${pick.shot[1]}) brings down ${BIG.blocks.length - pick.remaining} blocks`);
+    note(pick.peakAfterHeadless === 0, `headless runs make no particles (15 runs, ${pick.peakAfterHeadless} particles)`);
+    await o.page.evaluate(({ L, shot }) => { window.__cc.goto(L); window.__cc.perfReset(); window.__cc.queue([shot]); }, { L: BIG, shot: pick.shot });
+    const w = await watch(o.page, 4500);
+    await o.page.screenshot({ path: shotFile('13-big-collapse.png') });
+    note(w.frames > 100 && w.avgMs < 12, `the collapse draws in ${w.avgMs.toFixed(2)} ms a frame on average over ${w.frames} frames (limit 12; worst single frame ${w.worstMs.toFixed(1)} ms; device pixel ratio ${w.dpr})`);
+    note(w.peak > 20 && w.peak <= w.cap, `particles alive never pass the cap (most at once ${w.peak}, cap ${w.cap})`);
+    note(w.slows === 1 && w.slowest < 0.6, `one slow moment in the shot (${w.slows}; slowest ${w.slowest.toFixed(2)}x)`);
+    note(w.maxShake > 0.5 && w.maxShake <= 5, `the screen shakes a few pixels at most (${w.maxShake.toFixed(1)} px)`);
+    note(w.state.total - w.state.remaining === BIG.blocks.length - pick.remaining, `live play with effects ends the same as the headless run (${w.state.remaining} blocks left both ways)`);
+    await o.ctx.close();
+    const calm = await open(390, 844, { ctx: { reducedMotion: 'reduce' } });
+    await calm.page.evaluate(({ L, shot }) => { window.__cc.goto(L); window.__cc.perfReset(); window.__cc.queue([shot]); }, { L: BIG, shot: pick.shot });
+    const c = await watch(calm.page, 3000);
+    note(c.reduced && c.maxShake === 0 && c.slows === 0 && c.slowest > 0.99, `with "reduce motion" on: no shake (${c.maxShake}), no slow motion (slowest ${c.slowest.toFixed(2)}x)`);
+    await calm.ctx.close();
+  }
 
   note(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   note(foreign.length === 0, 'no requests to other hosts' + (foreign.length ? ': ' + foreign.slice(0, 3).join(', ') : ''));
